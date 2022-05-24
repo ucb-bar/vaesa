@@ -64,125 +64,12 @@ def load_module_state(model, state_name, device=None):
     return
 
 
-def graph_with_energy(g_list):
-    g_list_new = []
-    energy_list = []
-    width = 48
-    energy_max = 0
-    for (g, y) in g_list:
-        energy = 0
-        for i in range(1, g.vcount()):
-            if g.vs[i]['type'] == 2 or g.vs[i]['type'] == 3:
-                m = 9 + 1
-            elif g.vs[i]['type'] == 4 or g.vs[i]['type'] == 5:
-                m = 25 + 1
-            elif g.vs[i]['type'] == 6 or g.vs[i]['type'] == 7:
-                m = 1
-            else:
-                m = width
-            num_precessors = len(g.predecessors(i))
-            energy += width * m * num_precessors
-        if energy > energy_max:
-            energy_max = energy
-        energy_list.append(energy)
-    for i, (g, y) in enumerate(g_list):
-        g_list_new.append((g, y, energy_list[i] / energy_max))
-    return g_list_new
-
-
-'''Data preprocessing'''
-def load_ENAS_graphs(name, n_types=6, fmt='igraph', rand_seed=0, with_y=True, burn_in=1000):
-    # load ENAS format NNs to igraphs or tensors
-    g_list = []
-    max_n = 0  # maximum number of nodes
-    with open('data/%s.txt' % name, 'r') as f:
-        for i, row in enumerate(tqdm(f)):
-            if i < burn_in:
-                continue
-            if row is None:
-                break
-            if with_y:
-                row, y = eval(row)
-            else:
-                row = eval(row)
-                y = 0.0
-            if fmt == 'igraph':
-                g, n = decode_ENAS_to_igraph(row)
-            elif fmt == 'string':
-                g, n = decode_ENAS_to_tensor(row, n_types)
-            max_n = max(max_n, n)
-            g_list.append((g, y)) 
-    graph_args.num_vertex_type = n_types + 2  # original types + start/end types
-    graph_args.max_n = max_n  # maximum number of nodes
-    graph_args.START_TYPE = 0  # predefined start vertex type
-    graph_args.END_TYPE = 1 # predefined end vertex type
-    ng = len(g_list)
-    print('# node types: %d' % graph_args.num_vertex_type)
-    print('maximum # nodes: %d' % graph_args.max_n)
-    random.Random(rand_seed).shuffle(g_list)
-    return g_list[:int(ng*0.9)], g_list[int(ng*0.9):], graph_args
-
-
-# return igraph type samples of NASBench
-def load_NASBench_graphs(name, n_types=5, fmt='igraph', rand_seed=0, with_y=True):
-    g_list = []
-    max_n = 0  # maximum number of nodes
-    with open('data/%s.txt' % name, 'r') as f:
-        for i, row in enumerate(tqdm(f)):
-            row, labeling, cmplx,  y= eval(row)
-            if fmt == 'igraph':
-                g, n = decode_NASBench_to_igraph(row, labeling)
-            max_n = max(max_n, n)
-            g_list.append((g, y, cmplx/10000000))
-    
-    graph_args.num_vertex_type = 7 + 2  # original types + start/end types
-    graph_args.max_n = max_n  # maximum number of nodes
-    graph_args.START_TYPE = 0  # predefined start vertex type
-    graph_args.END_TYPE = 1 # predefined end vertex type
-    ng = len(g_list)        
-    random.Random(rand_seed).shuffle(g_list)
-    return g_list[:int(ng*0.9)], g_list[int(ng*0.9):], graph_args
-
 
 def one_hot(idx, length):
     idx = torch.LongTensor([idx]).unsqueeze(0)
     x = torch.zeros((1, length)).scatter_(1, idx, 1)
     return x
 
-
-def decode_ENAS_to_tensor(row, n_types):
-    n_types += 2  # add start_type 0, end_type 1
-    if type(row) == str:
-        row = eval(row)  # convert string to list of lists
-    n = len(row)  # n+2 is the real number of vertices in the DAG
-    g = []
-    # ignore start vertex
-    for i, node in enumerate(row):
-        node_type = node[0] + 2  # assign 2, 3, ... to other types
-        type_feature = one_hot(node_type, n_types)
-        if i == 0:
-            edge_feature = torch.zeros(1, n+1)  # a node will have at most n+1 connections
-        else:
-            edge_feature = torch.cat([torch.FloatTensor(node[1:]).unsqueeze(0), 
-                                     torch.zeros(1, n+1-i)], 1)  # pad zeros
-        edge_feature[0, i] = 1 # ENAS node always connects from the previous node
-        g.append(torch.cat([type_feature, edge_feature], 1))
-    # process the output node
-    node_type = 1
-    type_feature = one_hot(node_type, n_types)
-    edge_feature = torch.zeros(1, n+1)
-    edge_feature[0, n] = 1  # output node only connects from the final node in ENAS
-    g.append(torch.cat([type_feature, edge_feature], 1))
-    return torch.cat(g, 0).unsqueeze(0), n+2
-
-
-def plot_config(g, res_dir, name, backbone=False, data_type='cosa', pdf=False):
-    # backbone: puts all nodes in a straight line 
-    file_name = os.path.join(res_dir, name+'.txt')
-    g_np_array = g.detach().cpu().numpy()
-    g_str = np.array2string(g_np_array, formatter={'float_kind':lambda x: "%.2f" % x})
-    with open(file_name, 'w') as f:
-        f.write(g_str)
 
 def plot_searched_points(g, res_dir, name):
     file_name = os.path.join(res_dir, name+'.json')
@@ -200,6 +87,7 @@ def parse_json(json_path):
     with open(json_path) as f:
         data = json.load(f)
     return data
+
 
 '''optimizers for search for one objective'''
 def Newton_method_single_obj(x, f, lr):

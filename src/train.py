@@ -369,6 +369,7 @@ def test(log_obj, norm_obj, norm_path=None):
             print('Test average recon loss: {0}, recon accuracy: {1:.8f}'.format(Nll, acc))
             return Nll, acc
 
+
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -681,14 +682,6 @@ for epoch in range(start_epoch + 1, args.epochs + 1):
         plt.legend()
         plt.savefig(loss_plot_name)
 
-
-
-'''Testing begins here'''
-if args.predictor:
-    Nll, acc, pred_rmse = test(log_obj=args.log_obj, norm_obj=args.norm_obj, norm_path=norm_path)
-else:
-    Nll, acc = test(log_obj=args.log_obj, norm_obj=args.norm_obj, norm_path=norm_path)
-    pred_rmse = 0
 
 sys.exit(0)
 

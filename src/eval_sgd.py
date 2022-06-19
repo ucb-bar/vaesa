@@ -10,13 +10,13 @@ import shutil
 import sys
 from test_util import parse_dnn_def, gen_dnn_predictors
 
-from util import plot_config, plot_searched_points
-sys.path.insert(1, '/scratch/qijing.huang/cosa/src/')
+_COSA_DIR = os.environ['COSA_DIR']
+sys.path.insert(1, COSA_DIR)
+
+from util import plot_searched_points
 import utils
 import bo
 from cosa_input_objs import Arch, Prob
-
-_COSA_DIR = os.environ['COSA_DIR']
 
 
 def eval_arch(hw_config, obj, base_arch_path, arch_dir, output_dir, dataset_path, model, layer_idx, dnn_def_path):
@@ -127,7 +127,6 @@ def search_all_layers(layer_dir, model, target_model, search_samples, search_opt
                 dataset_path = layer_dir / f'dataset_{postfix}_sgd{sgd_step}_s{search_seed}.csv'
                 print(f'dataset_path {dataset_path}')
                 namei = '{}_graph_{}'.format(search_optimizer, i)
-                plot_config(sgd_design[0], search_dir, namei, data_type=data_type)
                 plot_searched_points(sgd_design, search_dir, namei)
                 target_model = f'new_{postfix}_sgd{sgd_step}_s{search_seed}'
                 eval_arch(sgd_design[0].tolist(), obj, base_arch_path, arch_dir, output_dir, dataset_path, target_model, layer_idx, dnn_def_path)

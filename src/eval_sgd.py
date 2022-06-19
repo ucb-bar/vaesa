@@ -10,12 +10,13 @@ import shutil
 import sys
 from test_util import parse_dnn_def, gen_dnn_predictors
 
+_COSA_DIR = os.environ['COSA_DIR']
+sys.path.insert(1, COSA_DIR)
+
 from util import plot_searched_points
 import utils
 import bo
 from cosa_input_objs import Arch, Prob
-
-_COSA_DIR = os.environ['COSA_DIR']
 
 
 def eval_arch(hw_config, obj, base_arch_path, arch_dir, output_dir, dataset_path, model, layer_idx, dnn_def_path):

@@ -16,20 +16,20 @@ For more details, please refer to:
 
 ## Installation
 
-TODO: Update CoSA installation instructions below
+1. Install python dependencies
+```
+python -m pip install -r requirements.txt
+```
 
-1. Obtain a Gurobi license (see [here](https://www.gurobi.com/academia/academic-program-and-licenses/) for instructions on obtaining one for free if you're an academic). You do **not** need to download or install Gurobi itself. Once you have a license, download and extract the [Gurobi license manager](https://support.gurobi.com/hc/en-us/articles/360059842732-How-do-I-set-up-a-license-without-installing-the-full-Gurobi-package-), then run the `grbgetkey` executable, supplying your [license key](https://www.gurobi.com/downloads/licenses/) when required. If you select a non-default location for the license file, specify the location of the file using:
+2. CoSA (includes Gurobi, Timeloop, Accelergy):
+Please refer to the instructions in the [CoSA repo](https://github.com/ucb-bar/cosa) to install CoSA and its dependencies. Define the `COSA_DIR` environment variable pointing to the directory where CoSA is installed.
 ```
-export GRB_LICENSE_FILE=/path/to/gurobi.lic
+export COSA_DIR=<path/to/cosa/dir>
 ```
-2. Timeloop (optional - can be skipped if you only want to run the scheduler, without Timeloop benchmarking): 
-Please refer to the instructions in the [Timeloop Tutorial](http://accelergy.mit.edu/infra_instructions.html) to install Timeloop with Docker.
-To install from source code please, follow the instructions in [Timeloop Github](https://github.com/NVlabs/timeloop).
-The specific Timeloop version used for CoSA evaluation is commit [11920be](https://github.com/NVlabs/timeloop/commit/11920be5a744239c985ff049256f2fc40f65ce8b). 
 
 ## Train VAESA
 
-To train the default configuration of VAESA, simply run: `bash src/run.sh` from the command line.
+To train the default configuration of VAESA, simply run: `bash run.sh` from the `src` directory.
 
 The file `src/run.sh` contains the following variables which can configure the models trained:
 
@@ -43,7 +43,3 @@ VAE_MODEL    - set VAE hidden_dims model. options [orig, model_1, model_2] (defa
 DATASET_PATH - training data path (default: ../db/dataset_all_layer.csv)
 OBJ          - optimization target. options [edp, latency, energy] (default: edp)
 ```
-
-## Inference
-
-TODO

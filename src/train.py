@@ -1,3 +1,34 @@
+"""Contains training utilities the VAESA model.
+
+Training script that covers all training options for VAESA. The encoder, decoder,
+and performance predictor(s) are all trained together here. The user can configure
+typical neural network model training parameters such as the initial learning rate,
+random seed, and number of epochs to train. The user can also configure VAESA-specific
+parameters such as the latent space dimensionality (--nz) or set predictor/autoencoder 
+model options (--predictor, --predictor-model, --VAE-model). Use the --help option for 
+more info.
+
+    Typical usage example:
+
+    python train.py --data-name cosa_data \
+                    --save-interval 10 \
+                    --epochs 2000 \
+                    --lr 1e-4 \
+                    --model VAE \
+                    --predictor \
+                    --nz 4 \
+                    --batch-size 64 \
+                    --data-type cosa \
+                    --train-from-scratch \
+                    --seed 1234 \
+                    --dataset-size 131328 \
+                    --predictor-model orig_1 \
+                    --dataset-path ../db/dataset_all_layer.csv \
+                    --obj edp \
+                    --VAE-model model_1 \
+                    --reprocess
+"""
+
 import os
 import sys
 import pathlib
@@ -8,6 +39,7 @@ import argparse
 import random
 import shutil
 import copy
+import logging
 import torch
 from torch import nn, optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -75,8 +107,6 @@ parser.add_argument('--hs', type=int, default=1024, metavar='N',
                     help='hidden size')
 parser.add_argument('--nz', type=int, default=4, metavar='N',
                     help='latent vectors z dimension')
-parser.add_argument('--bidirectional', action='store_true', default=True,
-                    help='whether to use bidirectional encoding')
 parser.add_argument('--predictor', action='store_true', default=False,
                     help='whether to train a performance predictor from latent\
                     encodings and a VAE at the same time')
@@ -111,9 +141,12 @@ parser.add_argument('--only-dnn-search', action='store_true', default=False,
                     help='if True, perform search on latent space')
 parser.add_argument('--search-all-layers', action='store_true', default=False,
                     help='if True, search all layers')
-
+parser.add_argument('--loglevel', type=str, default="INFO",
+                    help='set log level, options [NOTSET, DEBUG, INFO,\
+                    WARNING, ERROR, CRITICAL] (default: INFO)')
 
 args = parser.parse_args()
+logging.basicConfig(level=args.loglevel.upper(), format='%(asctime)s %(levelname)s %(message)s')
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
 if args.cuda:
@@ -123,9 +156,9 @@ else:
     device = torch.device("cpu")
 np.random.seed(args.seed)
 random.seed(args.seed)
-print(args)
+logging.info(args)
 
-'''Prepare data'''
+"""Prepare data"""
 args.file_dir = os.path.dirname(os.path.realpath('__file__'))
 args.res_dir = os.path.join(args.file_dir, 'results/{}{}'.format(args.data_name, args.save_appendix))
 if args.predictor:
@@ -150,8 +183,25 @@ else:
         vae_args, _ = cmd_opt.parse_known_args()
 
 vae_args.max_n = 6
-'''Define some train/test functions'''
 def train(epoch):
+    """Trains the VAESA model for one epoch.
+    
+    Training includes the encoder, decoder, and performance predictors. 
+    Arguments are received through the command line.
+
+    Args:
+        epoch: An int representing the number of the current epoch.
+
+    Returns:
+        A tuple with loss values of all neural networks that are part of VAESA.
+        Loss values are floats. The loss values returned:
+        
+        (train_loss, recon_loss, kld_loss, pred_loss, energy_loss)
+        
+        If performance predictors not used, pred_loss and energy_loss will be 0.
+        If the search objective is latency, energy_loss will be 0.
+        If the search objective is energy, pred_loss will be 0.
+    """
     model.train()
     train_loss = 0
     recon_loss = 0
@@ -231,15 +281,36 @@ def train(epoch):
             y_batch = []
             energy_batch = []
 
-    print('==========> Epoch: {} Average loss: {:.4f}'.format(
+    logging.info('==========> Epoch: {} Average loss: {:.4f}'.format(
           epoch, train_loss / len(train_data)))
 
-    if args.predictor:
-        return train_loss, recon_loss, kld_loss, pred_loss, energy_loss
-    return train_loss, recon_loss, kld_loss, energy_loss
+    return train_loss, recon_loss, kld_loss, pred_loss, energy_loss
 
 
 def test(log_obj, norm_obj, norm_path=None):
+    """Evaluates the VAESA model.
+    
+    Evaluates reconstruction and prediction accuracy of VAESA model.
+
+    Args:
+        log_obj: Boolean; set true if the log of the objectives (latency, 
+            energy) was taken during normalization
+        norm_obj: Boolean; set true if the objectives (latency, energy) 
+            were normalized 
+        norm_path: String file pathname of file containing normalization
+            statistics (mean/std) of dataset
+
+    Returns:
+        A tuple with loss values of all neural networks that are part of VAESA.
+        Loss values are floats. The loss values returned:
+        
+        (Nll, acc, pred_rmse)
+        
+        Nll: MSE loss value of autoencoder reconstruction
+        acc: Number of exactly reconstructed test points TODO: implement
+        pred_rmse: Root mean squared error of performance predictions. 0 if
+            performance predictor(s) not used.
+    """
     model.eval()
     encode_times = 10
     decode_times = 10
@@ -247,7 +318,7 @@ def test(log_obj, norm_obj, norm_path=None):
     pred_loss = 0
     energy_loss = 0
     n_perfect = 0
-    print('Testing begins...')
+    logging.info('Testing begins...')
     pbar = tqdm(test_data)
     input_batch = []
     y_batch = []
@@ -258,8 +329,7 @@ def test(log_obj, norm_obj, norm_path=None):
     latency_diff_percent = None
     energy_diff_percent = None
     mu_all = None 
-    print('Predictor weight value:')
-    print(model.predictor_energy[0].weight.data[1])
+    logging.info('Predictor weight value: %s', model.predictor_energy[0].weight.data[1])
     with torch.no_grad():
         for i, pb in enumerate(pbar):
             g, y, energy, layer_feat = pb
@@ -273,13 +343,13 @@ def test(log_obj, norm_obj, norm_path=None):
                 mu, logvar = model.encode(input_batch)
                 all_loss, nll, _ = model.loss(mu, logvar, input_batch, i)
                 pbar.set_description('recons loss: {:.8f}'.format(nll.item()/len(input_batch)))
-                print('total loss: {:.8f}'.format(all_loss.item()/len(input_batch)))
+                logging.info('total loss: {:.8f}'.format(all_loss.item()/len(input_batch)))
                 Nll += nll.item()
                 if mu_all is None:
                     # mu_all  = torch.sum(mu, 0)
                     mu_all  = mu 
                 else:
-                    print('JENNY', mu_all.size())
+                    logging.debug('Number of test latent values forward propagated so far: %s', mu_all.size())
                     
                     #mu_all = torch.stack((torch.sum(mu, 0), mu_all), 0)
                     mu_all = torch.cat((mu, mu_all), 0)
@@ -309,8 +379,8 @@ def test(log_obj, norm_obj, norm_path=None):
                            
                         loss_y = model.mseloss(y_pred, y_batch)
                         pred_loss += loss_y
-                        print(f'y_batch: {y_batch_np}, y_pred: {y_pred_np}')
-                        print('latency_pred loss: {:.8f}'.format(loss_y.item()/len(input_batch)))
+                        logging.debug(f'y_batch: {y_batch_np}, y_pred: {y_pred_np}')
+                        logging.debug('latency_pred loss: {:.8f}'.format(loss_y.item()/len(input_batch)))
 
                     if args.obj in ['edp', 'energy']:
                         energy_batch = torch.FloatTensor(energy_batch).unsqueeze(1).to(device)
@@ -328,8 +398,8 @@ def test(log_obj, norm_obj, norm_path=None):
                             energy_diff_percent += energy_diff_sum
 
                         loss_energy = model.mseloss(energy_pred, energy_batch)
-                        print(f'energy_batch: {energy_batch_np}, energy_pred: {energy_pred_np}')
-                        print('energy_pred loss: {:.8f}'.format(loss_energy.item()/len(input_batch)))
+                        logging.debug(f'energy_batch: {energy_batch_np}, energy_pred: {energy_pred_np}')
+                        logging.debug('energy_pred loss: {:.8f}'.format(loss_energy.item()/len(input_batch)))
                         pred_loss += loss_energy 
      
 
@@ -357,17 +427,16 @@ def test(log_obj, norm_obj, norm_path=None):
         energy_diff_percent /= len(test_data)
         mu_mean = torch.mean(mu_all, 0)
         mu_std = torch.std(mu_all, 0)
-        print(f'mu mean value: {mu_mean}')
-        print(f'mu std value: {mu_std}')
-        print(f'avg recon diff : {input_diff_percent}')
-        print(f'avg latency diff: {latency_diff_percent}')
-        print(f'avg energy diff: {energy_diff_percent}')
+        logging.debug(f'mu mean value: {mu_mean}')
+        logging.debug(f'mu std value: {mu_std}')
+        logging.debug(f'avg recon diff : {input_diff_percent}')
+        logging.debug(f'avg latency diff: {latency_diff_percent}')
+        logging.debug(f'avg energy diff: {energy_diff_percent}')
         if args.predictor:
-            print('Test average recon loss: {0}, recon accuracy: {1:.8f}, pred rmse: {2:.8f}'.format(Nll, acc, pred_rmse))
-            return Nll, acc, pred_rmse
+            logging.info('Test average recon loss: {0}, recon accuracy: {1:.8f}, pred rmse: {2:.8f}'.format(Nll, acc, pred_rmse))
         else:
-            print('Test average recon loss: {0}, recon accuracy: {1:.8f}'.format(Nll, acc))
-            return Nll, acc
+            logging.info('Test average recon loss: {0}, recon accuracy: {1:.8f}'.format(Nll, acc))
+        return Nll, acc, pred_rmse
 
 
 def count_parameters(model):
@@ -393,7 +462,7 @@ if not args.only_test and not args.only_search:
     cmd_input = 'python ' + ' '.join(sys.argv) + '\n'
     with open(os.path.join(args.res_dir, 'cmd_input.txt'), 'a') as f:
         f.write(cmd_input)
-    print('Command line input: ' + cmd_input + ' is saved.')
+    logging.info('Command line input: ' + cmd_input + ' is saved.')
 
 
 # prepare training data
@@ -484,7 +553,6 @@ if args.only_test:
     dataset_name = args.dataset_path.split('/')[-1].replace('.csv', '')  
     norm_path = f'dataset_stats_{dataset_name}.json'
 
-    print(args.norm_latent)
     #test(log_obj=args.log_obj, norm_obj=args.norm_obj, norm_path=norm_path)
     # pred_arch_perf(args.new_dnn_path, model, device, log_layerfeat=args.log_layerfeat, norm_layerfeat=args.norm_layerfeat, norm_layerfeat_option=args.norm_layerfeat_option, norm_latent=args.norm_latent, log_obj=args.log_obj, norm_obj=args.norm_obj, norm_path=norm_path)
     # pred_vis(args.new_dnn_path, model, device, args.nz, save_to="png", log_layerfeat=args.log_layerfeat, norm_layerfeat=args.norm_layerfeat, norm_layerfeat_option=args.norm_layerfeat_option, norm_latent=args.norm_latent, log_obj=args.log_obj, norm_obj=args.norm_obj, norm_path=norm_path)
@@ -526,7 +594,7 @@ if args.only_dnn_search:
     search_dir = os.path.join(args.res_dir, f'dnn_search_s{search_seed}')
 
     configs = model.dnn_search(args.search_samples, args.search_optimizer, dnn_def_tensor, lr=args.search_lr, obj=args.obj, norm_latent=args.norm_latent)
-    print(f'search_dir {search_dir}')
+    logging.info(f'search_dir {search_dir}')
     if not os.path.exists(search_dir):
         os.makedirs(search_dir)
 
@@ -565,7 +633,7 @@ if args.only_search:
     np.random.seed(search_seed)
     random.seed(search_seed)
 
-    print('Begin searching ...')
+    logging.info('Begin searching ...')
     if args.search_strategy == 'random':
         configs = model.random_search(args.search_samples, args.search_optimizer, args.search_lr, args.obj)
         search_dir = os.path.join(args.res_dir, f'random_search_s{search_seed}')
@@ -626,14 +694,9 @@ if os.path.exists(loss_name) and not args.keep_old:
 
 start_epoch = args.continue_from if args.continue_from is not None else 0
 for epoch in range(start_epoch + 1, args.epochs + 1):
-    print(f'epoch : {epoch}')
-    if args.predictor:
-        train_loss, recon_loss, kld_loss, pred_loss, energy_loss = train(epoch)
-    else:
-        train_loss, recon_loss, kld_loss, energy_loss = train(epoch)
-        pred_loss = 0.0
+    train_loss, recon_loss, kld_loss, pred_loss, energy_loss = train(epoch)
 
-    print("Epoch {}: {:.8f} {:.8f} {:.8f} {:.8f} {:.8f}\n".format(
+    logging.info("Epoch {}: {:.8f} {:.8f} {:.8f} {:.8f} {:.8f}\n".format(
         epoch,
         train_loss/len(train_data), 
         recon_loss/len(train_data), 
@@ -653,21 +716,20 @@ for epoch in range(start_epoch + 1, args.epochs + 1):
 
     scheduler.step(train_loss)
     if epoch % args.save_interval == 0:
-        print("save current model...")
+        logging.info("save current model...")
         model_name = os.path.join(args.res_dir, 'model_checkpoint{}.pth'.format(epoch))
         optimizer_name = os.path.join(args.res_dir, 'optimizer_checkpoint{}.pth'.format(epoch))
         scheduler_name = os.path.join(args.res_dir, 'scheduler_checkpoint{}.pth'.format(epoch))
         torch.save(model.state_dict(), model_name)
         torch.save(optimizer.state_dict(), optimizer_name)
-        print(model.state_dict()['predictor_energy.2.weight'])
         torch.save(scheduler.state_dict(), scheduler_name)
-        print("visualize reconstruction examples...")
+        # logging.info("visualize reconstruction examples...")
         # visualize_recon(epoch)
-        print("extract latent representations...")
+        # logging.info("extract latent representations...")
         # save_latent_representations(epoch)
-        print("sample from prior...")
+        logging.info("sample from prior...")
         sampled = model.generate_sample(args.sample_number)
-        print("plot train loss...")
+        logging.info("plot train loss...")
         losses = np.loadtxt(loss_name)
         if losses.ndim == 1:
             continue

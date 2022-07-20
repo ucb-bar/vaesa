@@ -176,8 +176,8 @@ if os.path.isfile(pkl_name) and not args.reprocess:
 else:
     if args.data_type == 'cosa':
         if not args.only_search and not args.search_strategy=='bo_latent':
-            train_dataset = dataset_prob.CoSADataset(split= "train", transform=torch.Tensor(), target_transform=torch.Tensor(), train_samples=args.dataset_size, dataset_path=args.dataset_path, target_log=args.log_obj, target_norm=args.norm_obj, layerfeat_log=args.log_layerfeat, layerfeat_norm=args.norm_layerfeat,layerfeat_norm_option=args.norm_layerfeat_option)
-            test_dataset = dataset_prob.CoSADataset(split= "test", transform=torch.Tensor(), target_transform=torch.Tensor(), train_samples=args.dataset_size, dataset_path=args.dataset_path, target_log=args.log_obj, target_norm=args.norm_obj, layerfeat_log=args.log_layerfeat, layerfeat_norm=args.norm_layerfeat, layerfeat_norm_option=args.norm_layerfeat_option)
+            train_dataset = dataset_prob.CoSADataset(split= "train", train_samples=args.dataset_size, dataset_path=args.dataset_path, target_log=args.log_obj, target_norm=args.norm_obj, layerfeat_log=args.log_layerfeat, layerfeat_norm=args.norm_layerfeat,layerfeat_norm_option=args.norm_layerfeat_option)
+            test_dataset = dataset_prob.CoSADataset(split= "test", train_samples=args.dataset_size, dataset_path=args.dataset_path, target_log=args.log_obj, target_norm=args.norm_obj, layerfeat_log=args.log_layerfeat, layerfeat_norm=args.norm_layerfeat, layerfeat_norm_option=args.norm_layerfeat_option)
             train_data, test_data = train_dataset, test_dataset 
         cmd_opt = argparse.ArgumentParser()
         vae_args, _ = cmd_opt.parse_known_args()

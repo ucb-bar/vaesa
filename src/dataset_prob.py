@@ -37,6 +37,10 @@ class CoSADataset(Dataset):
             layerfeat_norm (bool): Whether to normalize each layer dimension.
             layerfeat_norm_option (string): The method with which to normalize.
                 [mean, max]
+
+        Returns:
+            Void, but initializes pandas DataFrame self.arch_feat_frame with the
+            above config
         """
         csv_file = dataset_path
         print(f"Path to CSV file: {csv_file}")

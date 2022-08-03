@@ -11,10 +11,9 @@ import sys
 from test_util import parse_dnn_def, gen_dnn_predictors
 
 _COSA_DIR = os.environ['COSA_DIR']
-sys.path.insert(1, COSA_DIR)
+sys.path.insert(1, _COSA_DIR)
 
-from util import plot_searched_points
-import utils
+import util
 import bo
 from cosa_input_objs import Arch, Prob
 
@@ -47,7 +46,7 @@ def gen_existing_layer_json(output_dir='test_layers/exisiting_layers'):
     for model_str in model_strs: 
         model_dir = workload_dir / (model_str+'_graph')
         layer_def_path = model_dir / 'unique_layers.yaml'
-        layers = utils.parse_yaml(layer_def_path)
+        layers = util.parse_yaml(layer_def_path)
 
         for layer_idx, layer in enumerate(layers): 
             try: 
@@ -60,7 +59,7 @@ def gen_existing_layer_json(output_dir='test_layers/exisiting_layers'):
                 entry.extend([prob.prob[key] for key in keys])
                 single_layer_network = [entry]
 
-                utils.store_json(output_dir / f'{prob_key}.json', single_layer_network)
+                util.store_json(output_dir / f'{prob_key}.json', single_layer_network)
             except:
                 raise
 
@@ -73,7 +72,7 @@ def gen_existing_layer_json(output_dir='test_layers/exisiting_layers'):
     for model_str in model_strs: 
         model_dir = workload_dir / (model_str+'_graph')
         layer_def_path = model_dir / 'unique_layers.yaml'
-        layers = utils.parse_yaml(layer_def_path)
+        layers = util.parse_yaml(layer_def_path)
 
         for layer_idx, layer in enumerate(layers): 
             try: 
@@ -88,7 +87,7 @@ def gen_existing_layer_json(output_dir='test_layers/exisiting_layers'):
                 entry.extend([prob.prob[key] for key in keys])
                 single_layer_network = [entry]
 
-                utils.store_json(output_dir / f'{prob_key}.json', single_layer_network)
+                util.store_json(output_dir / f'{prob_key}.json', single_layer_network)
             except:
                 raise
  
@@ -127,7 +126,7 @@ def search_all_layers(layer_dir, model, target_model, search_samples, search_opt
                 dataset_path = layer_dir / f'dataset_{postfix}_sgd{sgd_step}_s{search_seed}.csv'
                 print(f'dataset_path {dataset_path}')
                 namei = '{}_graph_{}'.format(search_optimizer, i)
-                plot_searched_points(sgd_design, search_dir, namei)
+                util.plot_searched_points(sgd_design, search_dir, namei)
                 target_model = f'new_{postfix}_sgd{sgd_step}_s{search_seed}'
                 eval_arch(sgd_design[0].tolist(), obj, base_arch_path, arch_dir, output_dir, dataset_path, target_model, layer_idx, dnn_def_path)
        

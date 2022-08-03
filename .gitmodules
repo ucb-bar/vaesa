@@ -1,0 +1,3 @@
+[submodule "src/cosa"]
+	path = src/cosa
+	url = https://github.com/ucb-bar/cosa.git

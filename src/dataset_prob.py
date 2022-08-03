@@ -6,7 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.utils import shuffle
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
 import json
 
 # Ignore warnings
@@ -16,20 +15,37 @@ warnings.filterwarnings("ignore")
 _LAYER_FEAT_SCALES = [11,11,1024,1024,4096,4096,1,2,2]
 
 class CoSADataset(Dataset):
-    """Face Landmarks dataset."""
+    """VAESA dataset.
 
-    def __init__(self, split='train', transform=None, target_transform=None, dataset_path='dataset_all_layer.csv', train_samples=None,
+    Extends torch.utils.data.Dataset. Contains arch, layer, and performance
+    target data. Extends the __init__, __len__, and __getitem__ functions
+    from the parent class.
+    """
+    def __init__(self, split='train', dataset_path='dataset_all_layer.csv', train_samples=None,
             target_log=True, target_norm=True, layerfeat_log=False, layerfeat_norm=False, layerfeat_norm_option=''):
         """
         Args:
-            csv_file (string): Path to the csv file with annotations.
+            split (string): Which data split to contain [train, valid, test]
+            dataset_path (string): Path to the csv file with annotations.
+            train_samples (int): Number of samples to include in training set.
+                If not set, 75%-10%-15% split is used.
+            target_log (bool): Whether to take the log of the targets (cycle, 
+                energy, edp)
+            target_norm (bool):
+            layerfeat_log (bool): Whether to take the log of each layer dimension
+                (N, C, K, etc.)
+            layerfeat_norm (bool): Whether to normalize each layer dimension.
+            layerfeat_norm_option (string): The method with which to normalize.
+                [mean, max]
+
+        Returns:
+            Void, but initializes pandas DataFrame self.arch_feat_frame with the
+            above config
         """
         csv_file = dataset_path
         print(f"Path to CSV file: {csv_file}")
         full_dataset = shuffle(pd.read_csv(csv_file), random_state=0)
         # full_dataset = pd.read_csv(csv_file)
-        self.transform = transform
-        self.target_transform = target_transform
 
         num_rows = len(full_dataset)
         print(f'num_rows {num_rows}')
@@ -115,6 +131,19 @@ class CoSADataset(Dataset):
         return len(self.arch_feats_frame)
 
     def __getitem__(self, idx):
+        """Get a sample from the dataset.
+
+        Args:
+            idx (int): Row number in the dataset.
+        
+        Returns: Tuple of:
+            arch_feats_ins_ratio: torch.Tensor of integer values. Contains
+                architectural features of data
+            cycle_label (float64): Cycle performance number stored in this row.
+            energy_label (float64): Energy performance number stored in this row.
+            layer_feats: NumPy array of float64 values. Contains layer dimensions
+                (N, C, K, etc.) after any post-processing or normalization.
+        """
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
@@ -140,15 +169,9 @@ class CoSADataset(Dataset):
         arch_feats_ins_ratio = arch_feats_ins_ratio.astype('float').reshape(-1, ).astype(np.float64)
         arch_feats_ins_ratio = torch.Tensor(arch_feats_ins_ratio)
 
-        #self.transform = None
-        #self.target_transform = None
         arch_feats = torch.Tensor(arch_feats)
         cycle_label = np.float64(cycle_label)
         energy_label = np.float64(energy_label)
-        # if self.transform is not None:
-        #     arch_feats = self.transform(arch_feats)
-        # if self.target_transform is not None:
-        #     label = self.target_transform(label)
 
         return arch_feats_ins_ratio, cycle_label, energy_label, layer_feats
 

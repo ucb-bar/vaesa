@@ -3,6 +3,7 @@ from util import *
 from models import *
 from train_util import denorm_obj, norm_layerfeat_func
 import copy
+import pathlib
 
 def parse_dnn_def(dnn_path, device, log_layerfeat=False, norm_layerfeat=False, norm_layerfeat_option='', norm_path=''):
     dnn_def = parse_json(dnn_path)
@@ -44,7 +45,7 @@ def visualize_recon(model, test_data, train_data, epoch, args):
 
 
 def eval_arch(arch_config_lst):
-    sys.path.insert(1, '/scratch/qijing.huang/cosa/src/')
+    sys.path.insert(1, f"{os.environ['COSA_DIR']}/src/")
     # from bo import eval
     from bo import eval
 

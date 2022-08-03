@@ -1,3 +1,5 @@
+"""Contains models used in VAESA."""
+
 import math
 import random
 import torch
@@ -13,6 +15,13 @@ Tensor = TypeVar('torch.tensor')
 
 # This file implements the NAS method with graph VAE.
 class VAE(nn.Module):
+    """
+    The main PyTorch object, extending torch.nn.Module, used in VAESA.
+    This class includes the autoencoder network. Predictor models can be added
+    later (and are added in train.py). This class can also be used to run
+    architecture search using the functions random_search(), optimal_search(),
+    and grid_search().
+    """
     def __init__(self,
                  in_channels: int,
                  latent_dim: int,
@@ -303,6 +312,11 @@ class VAE(nn.Module):
 
     '''search methods'''
     def random_search(self, k, search_optimizer, lr=1e-2, obj='edp'):
+        """
+        Name is misleading. Starting from k random points in the latent space,
+        performs gradient descent or Newton's method on the performance
+        predictors to optimize the objective.
+        """
         pred_outputs = []
         # start_points_latent = torch.randn([k, self.nz], device='cuda:0', requires_grad=True)
         # start_points_latent = torch.tensor(torch.randn(k, self.nz), device='cuda:0', requires_grad=True)
@@ -336,6 +350,11 @@ class VAE(nn.Module):
 
 
     def optimal_search(self, k, search_optimizer, data, lr=1e-2, obj='edp'):
+        """
+        Assumes we have existing data for the given workload. Starting from the
+        best k known points in the latent space, performs gradient descent or
+        Newton's method on the performance predictors to optimize the objective.
+        """
         pred_outputs = []
         # start_points_latent = torch.randn([k, self.nz], device='cuda:0', requires_grad=True)
         start_points_latent = self.best_k_performance(k, data, obj=obj)
@@ -375,6 +394,9 @@ class VAE(nn.Module):
         return pred_outputs
 
     def grid_search(self, samples, obj='edp', search_range=4, points_per_dim=40):
+        """
+        Searches all points within a hypercube centered around the origin.
+        """
         print(f"Starting grid search with {samples} samples, searching in range {search_range}")
         linspace = np.linspace(-search_range, search_range, points_per_dim)
         # Generate list of all points in grid

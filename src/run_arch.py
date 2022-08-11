@@ -8,7 +8,7 @@ import subprocess
 import re
 import shutil
 
-import utils
+import util
 from cosa.cosa_input_objs import Arch, Prob
 
 _COSA_DIR = os.environ['COSA_DIR']
@@ -40,7 +40,7 @@ def construct_argparser():
 
 def gen_arch_yaml_from_config(base_arch_path, arch_dir, hw_configs, config_prefix, arch_v3=False):
     # Get base arch dictionary
-    base_arch = utils.parse_yaml(base_arch_path)
+    base_arch = util.parse_yaml(base_arch_path)
 
     # Create directory for new arch files, if necessary
     new_arch_dir = arch_dir
@@ -114,7 +114,7 @@ def gen_arch_yaml_from_config(base_arch_path, arch_dir, hw_configs, config_prefi
 
     # Save new arch
     new_arch_path = new_arch_dir.resolve() / config_str
-    utils.store_yaml(new_arch_path, new_arch)
+    util.store_yaml(new_arch_path, new_arch)
     return config_str
 
 
@@ -133,7 +133,7 @@ def get_hw_config_str(hw_configs, config_prefix, arch_v3=False):
 
 def gen_arch_yaml(base_arch_path, arch_dir):
     # Get base arch dictionary
-    base_arch = utils.parse_yaml(base_arch_path)
+    base_arch = util.parse_yaml(base_arch_path)
 
     # Create directory for new arch files, if necessary
     new_arch_dir = arch_dir
@@ -211,7 +211,7 @@ def gen_arch_yaml(base_arch_path, arch_dir):
                 
                 # Save new arch
                 new_arch_path = new_arch_dir.resolve() / config_str
-                utils.store_yaml(new_arch_path, new_arch)
+                util.store_yaml(new_arch_path, new_arch)
 
 
 def gen_dataset_col_title(with_layer=False):
@@ -258,46 +258,46 @@ def parse_results(output_dir, config_str, unique_sum=True, model='resnet50', lay
         workload_dir = pathlib.Path(workload_dir).resolve()
         model_dir = workload_dir / (model+'_graph')
         layer_def_path = model_dir / 'unique_layers.yaml'
-        layers = utils.parse_yaml(layer_def_path)
+        layers = util.parse_yaml(layer_def_path)
         layer = list(layers)[layer_idx]
         prob_path = model_dir / (layer + '.yaml')
         prob = Prob(prob_path)
         prob_key = prob.config_str()
 
-        cycle = utils.parse_json(cycle_path)[model][prob_key]
-        energy = utils.parse_json(energy_path)[model][prob_key]
+        cycle = util.parse_json(cycle_path)[model][prob_key]
+        energy = util.parse_json(energy_path)[model][prob_key]
         if arch_v3: 
-            area = utils.parse_json(area_path)[model][prob_key]
+            area = util.parse_json(area_path)[model][prob_key]
     else: 
         if unique_sum: 
             workload_dir = pathlib.Path(workload_dir)
             model_dir = workload_dir / (model + '_graph')
             layer_def_path = model_dir / 'unique_layers.yaml'
-            layers = utils.parse_yaml(layer_def_path)
+            layers = util.parse_yaml(layer_def_path)
             num_unique_layers = len(layers)
             print(f'Target model dir {model_dir}, layer def path {layer_def_path}, num layers {num_unique_layers}')
 
             try:
-                num_layers = len(utils.parse_json(cycle_path)[model].values())
+                num_layers = len(util.parse_json(cycle_path)[model].values())
                 if num_layers != num_unique_layers:
                     return -1, -1, -1
                 
-                cycle = sum(utils.parse_json(cycle_path)[model].values())
-                energy = sum(utils.parse_json(energy_path)[model].values())
+                cycle = sum(util.parse_json(cycle_path)[model].values())
+                energy = sum(util.parse_json(energy_path)[model].values())
                 if arch_v3:
-                    area = list(utils.parse_json(area_path)[model].values())[0]
+                    area = list(util.parse_json(area_path)[model].values())[0]
             except:
                 return -1, -1, -1
         else:
             # Load aggregated results JSON files
-            cycle_dict = utils.parse_json(cycle_path)
-            energy_dict = utils.parse_json(energy_path)
+            cycle_dict = util.parse_json(cycle_path)
+            energy_dict = util.parse_json(energy_path)
 
             # Load the layer count file for the selected model
             workload_dir = pathlib.Path(workload_dir).resolve()
             model_dir = workload_dir / (model+'_graph')
             layer_count_path = model_dir / ('layer_count.yaml')
-            layer_counts_model = utils.parse_yaml(layer_count_path)
+            layer_counts_model = util.parse_yaml(layer_count_path)
             
             # Compute total cycle count/energy
             cycle = total_layer_values(cycle_dict[model], layer_counts_model)
@@ -305,7 +305,7 @@ def parse_results(output_dir, config_str, unique_sum=True, model='resnet50', lay
             
             # Just one value for area
             if arch_v3:
-                area = list(utils.parse_json(area_path)['resnet50'].values())[0]
+                area = list(util.parse_json(area_path)['resnet50'].values())[0]
     return cycle, energy, area
 
 
@@ -330,7 +330,7 @@ def fetch_arch_perf_data_func(new_arch_dir, output_dir, glob_str='arch_pe*_v3.ya
         config_str = m.group(1)
         print(config_str)
 
-        new_arch = utils.parse_yaml(arch_file)
+        new_arch = util.parse_yaml(arch_file)
         config_v3_str = ""
         if arch_v3: 
             base_arch_dict = new_arch["architecture"]["subtree"][0]["subtree"][0]
@@ -410,7 +410,7 @@ def gen_dataset_per_layer(output_dir='/scratch/qijing.huang/cosa_ucb-bar/src/out
     for model_str in model_strs: 
         model_dir = workload_dir / (model_str+'_graph')
         layer_def_path = model_dir / 'unique_layers.yaml'
-        layers = utils.parse_yaml(layer_def_path)
+        layers = util.parse_yaml(layer_def_path)
 
         for layer_idx, layer in enumerate(layers): 
             try: 
@@ -465,11 +465,11 @@ def gen_dataset_all_layer(per_layer_dataset_dir='/scratch/qijing.huang/cosa_data
 
         per_layer_dataset_files = list(per_layer_dataset_files)
         first_layer_dataset_file = per_layer_dataset_files[0]
-        per_arch_data = utils.parse_csv(first_layer_dataset_file)
+        per_arch_data = util.parse_csv(first_layer_dataset_file)
         
         for arch_idx, arch_data in enumerate(per_arch_data[1:]):
             for per_layer_dataset_file in per_layer_dataset_files:
-                layer_line = utils.parse_csv_line(per_layer_dataset_file, arch_idx+1)
+                layer_line = util.parse_csv_line(per_layer_dataset_file, arch_idx+1)
                 layer_config_str = per_layer_dataset_file.name
                 layer_config_str = layer_config_str.replace('.csv','')
                 layer_config_str = layer_config_str.replace('dataset_','')
@@ -487,7 +487,7 @@ def merge_dataset_per_layer(per_layer_dataset_dir='/scratch/qijing.huang/cosa_da
     per_layer_dataset_files = per_layer_dataset_dir.glob('dataset_*.csv')
     per_layer_dataset_files = list(per_layer_dataset_files)
     # first_layer_dataset_file = per_layer_dataset_files[0]
-    # per_arch_data = utils.parse_csv(first_layer_dataset_file)
+    # per_arch_data = util.parse_csv(first_layer_dataset_file)
     
     seeds = [6,7,888,9999,987654321,123456]
     # target_dir = '/scratch/qijing.huang/cosa_dataset/db/layer_db' 
@@ -529,14 +529,14 @@ def gen_dataset_max_diff(per_layer_dataset_dir='/scratch/qijing.huang/cosa_datas
     
     per_layer_dataset_files = list(per_layer_dataset_files)
     first_layer_dataset_file = per_layer_dataset_files[0]
-    per_arch_data = utils.parse_csv(first_layer_dataset_file)
+    per_arch_data = util.parse_csv(first_layer_dataset_file)
     
     diffs = []
     variances = [] 
     per_layer_dataset_files = per_layer_dataset_files[12:13]
     for per_layer_dataset_file in per_layer_dataset_files:
     # for arch_idx, arch_data in enumerate(per_arch_data):
-        # layer_line = utils.parse_csv_line(per_layer_dataset_file, arch_idx+1)
+        # layer_line = util.parse_csv_line(per_layer_dataset_file, arch_idx+1)
         # new_data = layer_line + layer_config
         # new_data_str = ','.join(new_data) 
         min_perf, _ = parse_best_results(per_layer_dataset_file, n_entries=None, obj='edp', func='min')
@@ -610,7 +610,7 @@ def get_best_entry(data, metric_idx=[1,2], func='min'):
 
 
 def parse_best_results(dataset_path, n_entries=None, obj='edp', func='min'):
-    data = utils.parse_csv(dataset_path)
+    data = util.parse_csv(dataset_path)
     if n_entries is None:
         data = data[1:]
     else:
@@ -644,7 +644,7 @@ def gen_dataset_all(per_network_dataset_dir='/scratch/qijing.huang/cosa_ucb-bar/
         else:
             path = per_network_dataset_dir / f'dataset_{model_str}_actual.csv' 
 
-        per_arch_data = utils.parse_csv(path)
+        per_arch_data = util.parse_csv(path)
         network_data.append(per_arch_data)    
     
     all_data = network_data[0].copy()
@@ -726,8 +726,8 @@ def fetch_data(new_arch_dir, output_dir, glob_str='arch_pe*_v3.yaml'):
         cycle_json = output_dir / f"results_{arch_name}_cycle.json"
         energy_json = output_dir / f"results_{arch_name}_energy.json"
         try:
-            cycle_dict = utils.parse_json(cycle_json)
-            energy_dict = utils.parse_json(energy_json)
+            cycle_dict = util.parse_json(cycle_json)
+            energy_dict = util.parse_json(energy_json)
         except:
             # Data missing for some reason
             continue
@@ -739,7 +739,7 @@ def fetch_data(new_arch_dir, output_dir, glob_str='arch_pe*_v3.yaml'):
             if model not in layer_counts:
                 model_dir = workload_dir / (model+'_graph')
                 layer_count_path = model_dir / ('layer_count.yaml')
-                layer_counts[model] = utils.parse_yaml(layer_count_path)
+                layer_counts[model] = util.parse_yaml(layer_count_path)
             
             total_cycle = total_layer_values(cycle_dict[model], layer_counts[model])
             total_energy = total_layer_values(energy_dict[model], layer_counts[model])
@@ -753,7 +753,7 @@ def fetch_data(new_arch_dir, output_dir, glob_str='arch_pe*_v3.yaml'):
 
         if len(db) % 100 == 0:
             print(f"Fetched data for {len(db)} arch")
-    utils.store_json(output_dir / "all_arch.json", db)
+    util.store_json(output_dir / "all_arch.json", db)
     
 
 if __name__ == "__main__":

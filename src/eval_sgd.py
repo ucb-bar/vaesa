@@ -15,7 +15,7 @@ sys.path.insert(1, _COSA_DIR)
 
 import util
 import bo
-from cosa_input_objs import Arch, Prob
+from cosa.cosa_input_objs import Arch, Prob
 
 
 def eval_arch(hw_config, obj, base_arch_path, arch_dir, output_dir, dataset_path, model, layer_idx, dnn_def_path):

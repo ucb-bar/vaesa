@@ -7,10 +7,10 @@ import math
 import random
 import sys
 import torch
+import test_util 
+
 sys.path.insert(1, os.environ['COSA_DIR'] + '/src/')
 from run_arch import gen_arch_yaml_from_config, gen_data, gen_dataset_col_title, append_dataset_csv, parse_results, fetch_arch_perf_data 
-import bo 
-
 
 def eval_sample(vae_model, device, next_point_to_probe, obj, base_arch_path, arch_dir, output_dir, dataset_path, model, layer_idx, dnn_def_path):
     target_scale = 1e+14
@@ -23,7 +23,7 @@ def eval_sample(vae_model, device, next_point_to_probe, obj, base_arch_path, arc
     print("Sample latent feature:", latent_config)
     hw_config = vae_model.decode(torch.tensor(latent_config).to(device)).detach().cpu().tolist()
     print(f'Test hw config: {hw_config}')
-    cycle, energy, area = bo.eval(hw_config, base_arch_path, arch_dir, output_dir, dataset_path, model, layer_idx=layer_idx, dnn_def_path=dnn_def_path)
+    cycle, energy, area = test_util.eval(hw_config, base_arch_path, arch_dir, output_dir, dataset_path, model, layer_idx=layer_idx, dnn_def_path=dnn_def_path)
     if obj == 'edp':
         target = cycle * energy / target_scale 
     elif obj == 'latency':

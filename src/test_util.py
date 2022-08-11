@@ -4,6 +4,7 @@ from models import *
 from train_util import denorm_obj, norm_layerfeat_func
 import copy
 import pathlib
+from run_arch import gen_arch_yaml_from_config, gen_data, gen_dataset_col_title, append_dataset_csv, parse_results, fetch_arch_perf_data 
 
 def parse_dnn_def(dnn_path, device, log_layerfeat=False, norm_layerfeat=False, norm_layerfeat_option='', norm_path=''):
     dnn_def = parse_json(dnn_path)
@@ -93,17 +94,16 @@ def eval_arch(arch_config_lst):
 
     return eval_result
 
+
 def get_percent_diff(y_batch, y_pred, metric):
     y_batch = np.array(y_batch)
     y_pred = np.array(y_pred)
-    # diff = torch.div(torch.abs(torch.sub(y_batch, y_pred)), y_batch)
     diff = np.divide(np.absolute(y_batch-y_pred), y_batch)
-    # diff_sum = torch.sum(diff, 0) 
     diff_sum = np.sum(diff, 0) 
     diff_per_entry = diff_sum / diff.shape[0]
-    # diff_per_entry = diff_sum / diff.size()[0]
     print(f'{metric} diff_per_entry: {diff_per_entry}')
     return diff_sum
+
 
 def test_model():
     model.eval()
@@ -467,7 +467,7 @@ def extract_latent(data):
     return np.concatenate(Z, 0), np.array(Y)
 
 
-'''Extract latent representations Z'''
+''' Extract latent representations Z '''
 def save_latent_representations(epoch):
     Z_train, Y_train = extract_latent(train_data)
     Z_test, Y_test = extract_latent(test_data)
@@ -985,6 +985,7 @@ def encoded_data(args, train_data, model, num_points):
                 break
     return latent_points
 
+
 def encoded_vis(args, train_data, model, latent_points, plot_color="viridis", plot_range=None, perf_type="cycle", arch_idx=0, save_to="png", log_obj=False, norm_obj=False, norm_path=None):
     # plot_color : e.g. "viridis", "Blues", "Oranges"
     # perf_type : "cycle", "energy", "edp"
@@ -1110,3 +1111,37 @@ def encoded_vis(args, train_data, model, latent_points, plot_color="viridis", pl
         plt.savefig(save_file, bbox_inches='tight')
         print("Saved encoded training data (dim 3 and 4) to", save_file)
 
+
+def round_config(i, base=2):
+    return math.ceil(i / base) * base
+
+
+def discretize_config(hw_config): 
+    hw_config = hw_config[:]
+    for idx in range(len(hw_config)):
+        orig = hw_config[idx]
+        if math.ceil(orig) <= 0:
+            new = 1
+        else:
+            if idx == 0:
+                new = pow(2, math.ceil(math.log(orig)/math.log(2)))
+            else:
+                new = round_config(orig)
+        hw_config[idx] = new
+    return hw_config
+
+
+
+def eval(hw_config, base_arch_path, arch_dir, output_dir, dataset_path, model, config_prefix='', arch_v3=False, unique_sum=True, workload_dir='../configs/workloads', layer_idx=None, dnn_def_path=None):
+    hw_config = discretize_config(hw_config)
+    config_yaml_str = gen_arch_yaml_from_config(base_arch_path, arch_dir, hw_config, config_prefix, arch_v3=arch_v3)
+    glob_str = config_yaml_str
+    config_str = config_yaml_str.replace('.yaml', '')
+    gen_data(arch_dir, output_dir, glob_str, model=model, layer_idx=layer_idx, dnn_def_path=dnn_def_path)
+    cycle, energy, area = parse_results(output_dir, config_str, unique_sum, model=model, layer_idx=layer_idx)
+    print(cycle, energy, area)
+    assert(cycle > 0 and energy > 0)
+    data = fetch_arch_perf_data(arch_dir, output_dir, glob_str, arch_v3, mem_levels=5, model=model, layer_idx=layer_idx)
+    if cycle > 0:
+        append_dataset_csv(data, dataset_path)
+    return (cycle, energy, area)

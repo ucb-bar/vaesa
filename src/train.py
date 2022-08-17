@@ -488,9 +488,6 @@ if args.predictor:
     model_add_predictor(model, args, layer_size)
 model.to(device)
 
-if args.all_gpus:
-    net = custom_DataParallel(model, device_ids=range(torch.cuda.device_count()))
-
 if args.load_latest_model:
     load_module_state(model, os.path.join(args.res_dir, 'latest_model.pth'), device=device)
 else:
@@ -600,7 +597,7 @@ if args.only_dnn_search:
 
     for i, g in enumerate(configs):
         namei = '{}_config_{}'.format(args.search_optimizer, i)
-        plot_config(g[0], search_dir, namei, data_type=args.data_type)
+        # plot_config(g[0], search_dir, namei, data_type=args.data_type)
         plot_searched_points(g, search_dir, namei)
     
     finded_configs_path = os.path.join(search_dir, 'finded_configs.pkl')
@@ -652,7 +649,7 @@ if args.only_search:
             os.makedirs(search_dir)
         for i, g in enumerate(configs):
             namei = '{}_config_{}'.format(args.search_optimizer, i)
-            plot_config(g[0], search_dir, namei, data_type=args.data_type)
+            # plot_config(g[0], search_dir, namei, data_type=args.data_type)
             plot_searched_points(g, search_dir, namei)
         
         finded_configs_path = os.path.join(search_dir, 'finded_configs.pkl')

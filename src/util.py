@@ -17,10 +17,14 @@ import argparse
 import pdb
 # import pygraphviz as pgv
 import sys
+import logging
 
 # create a parser to save graph arguments
 cmd_opt = argparse.ArgumentParser()
 graph_args, _ = cmd_opt.parse_known_args()
+
+logging.basicConfig(level=logging.NOTSET, format='%(asctime)s %(levelname)s %(message)s')
+logger = logging.getLogger(__name__)
 
 '''load and save objects'''
 def save_object(obj, filename):

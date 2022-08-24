@@ -7,6 +7,7 @@ import json
 from torch import nn
 import random
 from tqdm import tqdm
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import os
@@ -18,6 +19,8 @@ import pdb
 # import pygraphviz as pgv
 import sys
 import logging
+
+matplotlib.use('Agg')
 
 # create a parser to save graph arguments
 cmd_opt = argparse.ArgumentParser()
@@ -81,9 +84,8 @@ def plot_searched_points(g, res_dir, name):
     g_key = ['decoded_sample', 'sample_latent', 'optimized_sample_latent', 'pred_cycle_before', 'pred_cycle_after', 'pred_energy_before', 'pred_energy_after']
     data = {}
     for idx, entry in enumerate(g):
-        entry = entry.detach().cpu().numpy().tolist()
+        # entry = entry.detach().cpu().numpy().tolist()
         data[g_key[idx]] = entry  
-    print(data)
     with open(file_name, 'w') as f:
         json.dump(data, f, indent=2)
 

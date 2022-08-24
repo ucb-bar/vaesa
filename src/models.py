@@ -269,7 +269,7 @@ class VAE(nn.Module):
     def dnn_search(self, k, search_optimizer, dnn_def, lr=1e-2, obj='edp', norm_latent=False, sgd_indice=[200], sgd_steps=200):
         assert(sgd_indice[-1]==sgd_steps)
         # start_points_latent = torch.randn([k, self.nz], device='cuda:0', requires_grad=True)
-        atart_points_latent = torch.rand([k, self.nz], device='cuda:0', requires_grad=True) * 2 - 1
+        start_points_latent = torch.rand([k, self.nz], device='cuda:0', requires_grad=True) * 2 - 1
         # start_points_latent = torch.zeros((k, self.nz), requires_grad=True).to(self.get_device())
         # start_points_latent = torch.normal( mean=0.0, std=0.25, size=(k, self.nz), device='cuda:0', requires_grad=True)
         for pred_idx, layer_def in enumerate(dnn_def):

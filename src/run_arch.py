@@ -16,7 +16,7 @@ from cosa.cosa_input_objs import Arch, Prob
 from run_dnn_models import run_dnn_models
 
 _COSA_DIR = os.environ['COSA_DIR']
-
+# _VAESA_SRC_DIR = 
 
 def construct_argparser():
 
@@ -493,7 +493,7 @@ def gen_dataset(new_arch_dir, output_dir, glob_str='arch_pe*_v3.yaml', model='re
     return min_metric
 
 
-def gen_dataset_per_layer(output_dir='/scratch/qijing.huang/cosa_ucb-bar/src/output_dir', model='resnet50', arch_v3=False, mem_levels=5, model_cycles=False, postfix='', arch_dir = '/scratch/qijing.huang/cosa_ucb-bar/src/gen_arch/'):
+def gen_dataset_per_layer(output_dir='output_dir', model='resnet50', arch_v3=False, mem_levels=5, model_cycles=False, postfix='', arch_dir = 'gen_arch'):
     workload_dir = '../configs/workloads' 
     workload_dir = pathlib.Path(workload_dir).resolve()
     output_dir = pathlib.Path(output_dir).resolve()
@@ -526,7 +526,7 @@ def gen_dataset_per_layer(output_dir='/scratch/qijing.huang/cosa_ucb-bar/src/out
                 print(traceback.format_exc())
 
 
-def gen_dataset_per_network(output_dir='/scratch/qijing.huang/cosa_ucb-bar/src/output_dir', arch_v3=False, mem_levels=5, model_cycles=False, postfix='', arch_dir='/scratch/qijing.huang/cosa_ucb-bar/src/gen_arch/'):
+def gen_dataset_per_network(output_dir='output_dir', arch_v3=False, mem_levels=5, model_cycles=False, postfix='', arch_dir='gen_arch'):
     unique_sum = True 
     workload_dir = '../configs/workloads' 
     workload_dir = pathlib.Path(workload_dir).resolve()
@@ -729,7 +729,7 @@ def parse_best_results(dataset_path, n_entries=None, obj='edp', func='min'):
     return best_metric, best_entry
 
 
-def gen_dataset_all(per_network_dataset_dir='/scratch/qijing.huang/cosa_ucb-bar/src/output_dir', unique_sum=True):
+def gen_dataset_all(per_network_dataset_dir='output_dir', unique_sum=True):
     model_strs = ['alexnet', 'resnet50', 'resnext50_32x4d', 'deepbench']
     
     per_network_dataset_dir = pathlib.Path(per_network_dataset_dir).resolve()

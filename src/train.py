@@ -39,7 +39,6 @@ import argparse
 import random
 import shutil
 import copy
-import logging
 import torch
 from torch import nn, optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -146,7 +145,7 @@ parser.add_argument('--loglevel', type=str, default="INFO",
                     WARNING, ERROR, CRITICAL] (default: INFO)')
 
 args = parser.parse_args()
-logging.basicConfig(level=args.loglevel.upper(), format='%(asctime)s %(levelname)s %(message)s')
+logger.setLevel(args.loglevel.upper())
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
 if args.cuda:
@@ -156,7 +155,7 @@ else:
     device = torch.device("cpu")
 np.random.seed(args.seed)
 random.seed(args.seed)
-logging.info(args)
+logger.info(args)
 
 """Prepare data"""
 args.file_dir = os.path.dirname(os.path.realpath('__file__'))
@@ -281,7 +280,7 @@ def train(epoch):
             y_batch = []
             energy_batch = []
 
-    logging.info('==========> Epoch: {} Average loss: {:.4f}'.format(
+    logger.info('==========> Epoch: {} Average loss: {:.4f}'.format(
           epoch, train_loss / len(train_data)))
 
     return train_loss, recon_loss, kld_loss, pred_loss, energy_loss
@@ -318,7 +317,7 @@ def test(log_obj, norm_obj, norm_path=None):
     pred_loss = 0
     energy_loss = 0
     n_perfect = 0
-    logging.info('Testing begins...')
+    logger.info('Testing begins...')
     pbar = tqdm(test_data)
     input_batch = []
     y_batch = []
@@ -329,7 +328,7 @@ def test(log_obj, norm_obj, norm_path=None):
     latency_diff_percent = None
     energy_diff_percent = None
     mu_all = None 
-    logging.info('Predictor weight value: %s', model.predictor_energy[0].weight.data[1])
+    logger.info('Predictor weight value: %s', model.predictor_energy[0].weight.data[1])
     with torch.no_grad():
         for i, pb in enumerate(pbar):
             g, y, energy, layer_feat = pb
@@ -343,13 +342,13 @@ def test(log_obj, norm_obj, norm_path=None):
                 mu, logvar = model.encode(input_batch)
                 all_loss, nll, _ = model.loss(mu, logvar, input_batch, i)
                 pbar.set_description('recons loss: {:.8f}'.format(nll.item()/len(input_batch)))
-                logging.info('total loss: {:.8f}'.format(all_loss.item()/len(input_batch)))
+                logger.info('total loss: {:.8f}'.format(all_loss.item()/len(input_batch)))
                 Nll += nll.item()
                 if mu_all is None:
                     # mu_all  = torch.sum(mu, 0)
                     mu_all  = mu 
                 else:
-                    logging.debug('Number of test latent values forward propagated so far: %s', mu_all.size())
+                    logger.debug('Number of test latent values forward propagated so far: %s', mu_all.size())
                     
                     #mu_all = torch.stack((torch.sum(mu, 0), mu_all), 0)
                     mu_all = torch.cat((mu, mu_all), 0)
@@ -379,8 +378,8 @@ def test(log_obj, norm_obj, norm_path=None):
                            
                         loss_y = model.mseloss(y_pred, y_batch)
                         pred_loss += loss_y
-                        logging.debug(f'y_batch: {y_batch_np}, y_pred: {y_pred_np}')
-                        logging.debug('latency_pred loss: {:.8f}'.format(loss_y.item()/len(input_batch)))
+                        logger.debug(f'y_batch: {y_batch_np}, y_pred: {y_pred_np}')
+                        logger.debug('latency_pred loss: {:.8f}'.format(loss_y.item()/len(input_batch)))
 
                     if args.obj in ['edp', 'energy']:
                         energy_batch = torch.FloatTensor(energy_batch).unsqueeze(1).to(device)
@@ -398,8 +397,8 @@ def test(log_obj, norm_obj, norm_path=None):
                             energy_diff_percent += energy_diff_sum
 
                         loss_energy = model.mseloss(energy_pred, energy_batch)
-                        logging.debug(f'energy_batch: {energy_batch_np}, energy_pred: {energy_pred_np}')
-                        logging.debug('energy_pred loss: {:.8f}'.format(loss_energy.item()/len(input_batch)))
+                        logger.debug(f'energy_batch: {energy_batch_np}, energy_pred: {energy_pred_np}')
+                        logger.debug('energy_pred loss: {:.8f}'.format(loss_energy.item()/len(input_batch)))
                         pred_loss += loss_energy 
      
 
@@ -427,15 +426,15 @@ def test(log_obj, norm_obj, norm_path=None):
         energy_diff_percent /= len(test_data)
         mu_mean = torch.mean(mu_all, 0)
         mu_std = torch.std(mu_all, 0)
-        logging.debug(f'mu mean value: {mu_mean}')
-        logging.debug(f'mu std value: {mu_std}')
-        logging.debug(f'avg recon diff : {input_diff_percent}')
-        logging.debug(f'avg latency diff: {latency_diff_percent}')
-        logging.debug(f'avg energy diff: {energy_diff_percent}')
+        logger.debug(f'mu mean value: {mu_mean}')
+        logger.debug(f'mu std value: {mu_std}')
+        logger.debug(f'avg recon diff : {input_diff_percent}')
+        logger.debug(f'avg latency diff: {latency_diff_percent}')
+        logger.debug(f'avg energy diff: {energy_diff_percent}')
         if args.predictor:
-            logging.info('Test average recon loss: {0}, recon accuracy: {1:.8f}, pred rmse: {2:.8f}'.format(Nll, acc, pred_rmse))
+            logger.info('Test average recon loss: {0}, recon accuracy: {1:.8f}, pred rmse: {2:.8f}'.format(Nll, acc, pred_rmse))
         else:
-            logging.info('Test average recon loss: {0}, recon accuracy: {1:.8f}'.format(Nll, acc))
+            logger.info('Test average recon loss: {0}, recon accuracy: {1:.8f}'.format(Nll, acc))
         return Nll, acc, pred_rmse
 
 
@@ -462,7 +461,7 @@ if not args.only_test and not args.only_search:
     cmd_input = 'python ' + ' '.join(sys.argv) + '\n'
     with open(os.path.join(args.res_dir, 'cmd_input.txt'), 'a') as f:
         f.write(cmd_input)
-    logging.info('Command line input: ' + cmd_input + ' is saved.')
+    logger.info('Command line input: ' + cmd_input + ' is saved.')
 
 
 # prepare training data
@@ -591,7 +590,7 @@ if args.only_dnn_search:
     search_dir = os.path.join(args.res_dir, f'dnn_search_s{search_seed}')
 
     configs = model.dnn_search(args.search_samples, args.search_optimizer, dnn_def_tensor, lr=args.search_lr, obj=args.obj, norm_latent=args.norm_latent)
-    logging.info(f'search_dir {search_dir}')
+    logger.info(f'search_dir {search_dir}')
     if not os.path.exists(search_dir):
         os.makedirs(search_dir)
 
@@ -630,7 +629,7 @@ if args.only_search:
     np.random.seed(search_seed)
     random.seed(search_seed)
 
-    logging.info('Begin searching ...')
+    logger.info('Begin searching ...')
     if args.search_strategy == 'random':
         configs = model.random_search(args.search_samples, args.search_optimizer, args.search_lr, args.obj)
         search_dir = os.path.join(args.res_dir, f'random_search_s{search_seed}')
@@ -693,7 +692,7 @@ start_epoch = args.continue_from if args.continue_from is not None else 0
 for epoch in range(start_epoch + 1, args.epochs + 1):
     train_loss, recon_loss, kld_loss, pred_loss, energy_loss = train(epoch)
 
-    logging.info("Epoch {}: {:.8f} {:.8f} {:.8f} {:.8f} {:.8f}\n".format(
+    logger.info("Epoch {}: {:.8f} {:.8f} {:.8f} {:.8f} {:.8f}\n".format(
         epoch,
         train_loss/len(train_data), 
         recon_loss/len(train_data), 
@@ -713,20 +712,20 @@ for epoch in range(start_epoch + 1, args.epochs + 1):
 
     scheduler.step(train_loss)
     if epoch % args.save_interval == 0:
-        logging.info("save current model...")
+        logger.info("save current model...")
         model_name = os.path.join(args.res_dir, 'model_checkpoint{}.pth'.format(epoch))
         optimizer_name = os.path.join(args.res_dir, 'optimizer_checkpoint{}.pth'.format(epoch))
         scheduler_name = os.path.join(args.res_dir, 'scheduler_checkpoint{}.pth'.format(epoch))
         torch.save(model.state_dict(), model_name)
         torch.save(optimizer.state_dict(), optimizer_name)
         torch.save(scheduler.state_dict(), scheduler_name)
-        # logging.info("visualize reconstruction examples...")
+        # logger.info("visualize reconstruction examples...")
         # visualize_recon(epoch)
-        # logging.info("extract latent representations...")
+        # logger.info("extract latent representations...")
         # save_latent_representations(epoch)
-        logging.info("sample from prior...")
+        logger.info("sample from prior...")
         sampled = model.generate_sample(args.sample_number)
-        logging.info("plot train loss...")
+        logger.info("plot train loss...")
         losses = np.loadtxt(loss_name)
         if losses.ndim == 1:
             continue

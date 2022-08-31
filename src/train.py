@@ -137,9 +137,11 @@ parser.add_argument('--train-from-scratch', action='store_true', default=False,
 parser.add_argument('--new-dnn-path', default='new_dnn.json',
                     help='new DNN definition')
 parser.add_argument('--only-dnn-search', action='store_true', default=False,
-                    help='if True, perform search on latent space')
+                    help='if True, perform search on latent space for the target DNN workload')
 parser.add_argument('--search-all-layers', action='store_true', default=False,
-                    help='if True, search all layers')
+                    help='if True, search all layers defined in args.search_all_layers_dir seperately')
+parser.add_argument('--search-all-layers-dir', default='test_layers/nonex_layers',
+                    help='Path that stores the layer definitions to target')
 parser.add_argument('--loglevel', type=str, default="INFO",
                     help='set log level, options [NOTSET, DEBUG, INFO,\
                     WARNING, ERROR, CRITICAL] (default: INFO)')
@@ -501,7 +503,7 @@ else:
                     nn.Tanh(), 
                     nn.Linear(args.hs, 1),
                     nn.Sigmoid()
-                    )
+                )
             model.predictor = predictor
             predictor_energy = nn.Sequential(
                     nn.Linear(args.nz+layer_size, args.hs), 
@@ -512,7 +514,7 @@ else:
                     nn.Tanh(), 
                     nn.Linear(args.hs, 1),
                     nn.Sigmoid()
-                    )
+                )
             model.predictor_energy = predictor_energy
 
         epoch = args.continue_from
@@ -615,7 +617,8 @@ if args.search_all_layers:
     dataset_name = args.dataset_path.split('/')[-1].replace('.csv', '')  
     norm_path = f'dataset_stats_{dataset_name}.json'
     # layer_dir = pathlib.Path('test_layers/exisiting_layers')
-    layer_dir = pathlib.Path('test_layers/nonex_layers')
+    # layer_dir = pathlib.Path('test_layers/nonex_layers')
+    layer_dir = args.search_all_layers_dir
     target_model = 'new'
     
     search_all_layers(layer_dir, model, target_model, args.search_samples, args.search_optimizer, args.search_lr, search_seed, args.res_dir, args.obj, device, args.data_type, args.norm_latent, args.log_layerfeat, args.norm_layerfeat, args.norm_layerfeat_option, args.log_obj, args.norm_obj, norm_path)

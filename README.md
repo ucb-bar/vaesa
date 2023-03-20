@@ -43,3 +43,8 @@ VAE_MODEL    - set VAE hidden_dims model. options [orig, model_1, model_2] (defa
 DATASET_PATH - training data path (default: ../db/dataset_all_layer.csv)
 OBJ          - optimization target. options [edp, latency, energy] (default: edp)
 ```
+
+## Inference VAESA 
+
+To evaluate the trained model, an example run script `eval.sh` is included in the `src` directory. 
+
